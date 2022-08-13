@@ -30,9 +30,8 @@ static int arestaExiste(aresta * actual, int origin, int destiny){
         }else{
             arestaExiste(actual->prox, origin, destiny);
         }
-    }else{
-        return 0;
     }
+    return 0;
 }
 
 // Função para criar arestas
@@ -138,15 +137,21 @@ static void pathCopy(lista **pathList, int original, int copy){
     }
 }
 
+static void grafoAllWhite(grafo ** grafo){
+    for(int i = 0; i < (*grafo)->numVertices; i++){
+        (*grafo)->vertices[i].stats = white;
+    }
+}
+
 //Função que implementa busca em largura para descobrir o menor caminho entre dois pontos e retorna esse caminho
-lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
+retornoBusca_t * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
     //Fila q define a ordem de procura
     fila *queue = filaCria();
     
     //Vetores de controle
     int *distance; //Distância ate a origem
     lista **path;
-    lista * retorno;
+    retornoBusca_t * retorno;
 
     //Variáveis auxiliares
     aresta * arestaAtual;
@@ -154,6 +159,8 @@ lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
 
     if(grafo != NULL){ // Verificando se o grafo é valido
         if(vOrigin > (*grafo)->numVertices || vDestiny > (*grafo)->numVertices){
+            return NULL;
+        }else if(vOrigin < 0 || vDestiny < 0){
             return NULL;
         }else{
             //Alocando um vetor que vai salvar as distâncias
@@ -211,7 +218,10 @@ lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
                 posiActual->stats = black;
             }
             //Salvando o menor caminho
-            retorno = path[vDestiny];
+            retorno = (retornoBusca_t*)malloc(sizeof(retornoBusca_t));
+            retorno->path = path[vDestiny];
+            retorno->custo = distance[vDestiny];
+
 
             /* Liberando a memória */
             filaLibera(&queue);
@@ -221,7 +231,7 @@ lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
                     listaLibera(&path[i]);
                 }
             }
-        
+            grafoAllWhite(grafo);
             //Com isso feito eu tenho as menor distancia possivel entre o meu vOrigem e o vDestino
             return retorno;
         }

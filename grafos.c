@@ -33,7 +33,6 @@ static int arestaExiste(aresta * actual, int origin, int destiny){
     }else{
         return 0;
     }
-    return 0;
 }
 
 // Função para criar arestas
@@ -80,26 +79,9 @@ void verticeAddAresta(grafo** grafo, int origin, int destiny, int peso){
 
 }
 
-// Função auxiliar
-static void arestaImprime(aresta *aresta){
-    if(aresta != NULL){
-        (void)printf("%2d --> %-2d\n", aresta->origin, aresta->destiny);
-        arestaImprime(aresta->prox);
-    }
-}
-
-//Função auxiliar
-static void verticeImprime(vertice vertice){
-    (void)printf("Vertice #%02d\n", vertice.info);
-    if(vertice.arestas != NULL){
-        arestaImprime(vertice.arestas);
-    }else{
-        (void)printf("Sem arestas\n");
-    }
-}
-
-
 void grafoImprime(grafo ** grafo){
+    aresta* aux;
+
     // Informações do grafo
     (void)printf("Grafo\n");
     (void)printf("Tipo: ");
@@ -107,7 +89,16 @@ void grafoImprime(grafo ** grafo){
     (void)printf("Numero de vertices: %d\n", (*grafo)->numVertices);
     //Imprimindo cada vertice
     for(int i = 0; i < (*grafo)->numVertices; i++){
-        verticeImprime((*grafo)->vertices[i]);
+        (void)printf("Vertice #%02d\n", (*grafo)->vertices[i].info);
+        if((*grafo)->vertices[i].arestas != NULL){
+            aux = (*grafo)->vertices[i].arestas;
+            while(aux!= NULL){
+                (void)printf("%2d --> %-2d (%3d)\n", aux->origin, aux->destiny, aux->peso);
+                aux = aux->prox;
+            }
+        }else{
+            (void)printf("Sem arestas\n");
+        }
     }
 }
 
@@ -129,6 +120,7 @@ void grafoCriaRandom(grafo **grafo, int minV, int maxV, tipoGrafo tipo){
     }
 }
 
+// Função para copiar o caminho ate um vertice para outro vertice
 static void pathCopy(lista **pathList, int original, int copy){
     lista * aux;
     while(pathList[copy] != NULL){
@@ -146,23 +138,21 @@ static void pathCopy(lista **pathList, int original, int copy){
     }
 }
 
-//Função que implementa busca em largura para descobrir o menor caminho entre dois pontos e retornar o custo desse caminho
+//Função que implementa busca em largura para descobrir o menor caminho entre dois pontos e retorna esse caminho
 lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
-    //Fila de ordem de procura
+    //Fila q define a ordem de procura
     fila *queue = filaCria();
     
     //Vetores de controle
-    int *distance; //Distancia ate a origem
+    int *distance; //Distância ate a origem
     lista **path;
     lista * retorno;
 
-    //Variaveis auxiliares
+    //Variáveis auxiliares
     aresta * arestaAtual;
     vertice * posiActual;
-    lista * new;
-    lista * aux;
 
-    if(grafo != NULL){
+    if(grafo != NULL){ // Verificando se o grafo é valido
         if(vOrigin > (*grafo)->numVertices || vDestiny > (*grafo)->numVertices){
             return NULL;
         }else{
@@ -174,10 +164,12 @@ lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
             //Inicializando a distâncio do vOrigem com ele msm
             distance[vOrigin] = 0;
 
+            //Alocando espaço para mapear os caminhos existentes no grafo
             path = (lista**)malloc(sizeof(lista*) * (*grafo)->numVertices);
             for(int i = 0; i < (*grafo)->numVertices; i++){
                 path[i] = NULL;
             }
+            //Caminho do vetor origem ate ele msm é somente ele msm
             listaAdd(&path[vOrigin], &(*grafo)->vertices[vOrigin]);
 
             //Iniciando a busca em largura
@@ -200,24 +192,28 @@ lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
                         (*grafo)->vertices[arestaAtual->destiny].stats = gray; //Define o vertice como cinza
                         filaAdd(&queue, &((*grafo)->vertices[arestaAtual->destiny])); //Add o vertice na fila
                         distance[arestaAtual->destiny] = distance[arestaAtual->origin] + arestaAtual->peso;
-                        
+                        //Copio o caminho até o vertice anterior
                         pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
+                        //Salvo o vertice q esta sendo visitado agr no caminho
                         listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
-                    }else if(distance[arestaAtual->destiny] > (distance[arestaAtual->origin] + arestaAtual->peso)){
-                        distance[arestaAtual->destiny] = (distance[arestaAtual->origin] + arestaAtual->peso);
+                    }else if(distance[arestaAtual->destiny] > (distance[arestaAtual->origin] + arestaAtual->peso)){ //Se foi achado um novo caminho menor q o anterior
+                        distance[arestaAtual->destiny] = (distance[arestaAtual->origin] + arestaAtual->peso); //Atualiza a distancia
                         if((*grafo)->vertices[arestaAtual->destiny].stats == black){
                             (*grafo)->vertices[arestaAtual->destiny].stats = gray;
-                            filaAdd(&queue, &(*grafo)->vertices[arestaAtual->destiny]);
-                            pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
-                            listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
                         }
+                        filaAdd(&queue, &(*grafo)->vertices[arestaAtual->destiny]);
+                        pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
+                        listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
                     }
+                    //Avançando pro proximo vertice adjacente ao vertice atual
                     arestaAtual = arestaAtual->prox;
                 }
                 posiActual->stats = black;
             }
+            //Salvando o menor caminho
             retorno = path[vDestiny];
 
+            /* Liberando a memória */
             filaLibera(&queue);
             free(distance);
             for(int i = 0; i < (*grafo)->numVertices; i++){
@@ -236,13 +232,15 @@ lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
 
 // Função que implemente busca em profundidade retorno o tamanho do menor caminho
 lista * buscaProfundidade(grafo** grafo, int vOrigin, int vDestiny){
-    /* Váriaveis */
+    /* Variáveis */
     pilha * prox = criaPilha();
-    vertice * verticeAtual;
-    aresta * arestaAtual;
-    int * distance;
     lista ** path;
     lista * retorno;
+
+    /* Variáveis auxiliares */
+    int * distance;
+    aresta * arestaAtual;
+    vertice * verticeAtual;
 
     /* Verificando se a entrada é valida */
     if((*grafo) != NULL){
@@ -254,10 +252,12 @@ lista * buscaProfundidade(grafo** grafo, int vOrigin, int vDestiny){
             }
             distance[vOrigin] = 0; // A distancia de um vertice ate ele msm eh 0
 
+            //Alocando memoria para mapear o grafo
             path = (lista**)malloc(sizeof(lista*) * (*grafo)->numVertices);
             for(int i = 0; i < (*grafo)->numVertices; i++){
                 path[i] = NULL;
             }
+            //Caminho do vetor origem ate ele msm é somente ele msm
             listaAdd(&path[vOrigin], &(*grafo)->vertices[vOrigin]);
 
             // Adicionando o vertice inicial na pilha
@@ -311,7 +311,7 @@ lista * buscaProfundidade(grafo** grafo, int vOrigin, int vDestiny){
                     listaLibera(&path[i]);
                 }
             }
-
+            //Retornando o menor caminho ate o vDestino
             return retorno;
         }
     }

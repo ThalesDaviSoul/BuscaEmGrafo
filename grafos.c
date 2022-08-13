@@ -1,0 +1,320 @@
+/* Inclusões */
+#include "grafos.h"
+#include "filas.h"
+#include "pilhas.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+/* Funções */
+//Função para criação de grafo
+void criaGrafo(grafo** graf, int numVertices, tipoGrafo type){
+    *graf = (grafo*)malloc(sizeof(grafo));
+    (*graf)->numVertices = numVertices;
+    (*graf)->type = type;
+    
+    //Criando os vertices e setando os valores padrões
+    (*graf)->vertices = (vertice*)malloc(sizeof(vertice) * numVertices);
+    for(int i = 0; i < (*graf)->numVertices; i++){
+        (*graf)->vertices[i].info = i;
+        (*graf)->vertices[i].arestas = NULL;
+        (*graf)->vertices[i].stats = white;
+    }
+}
+
+//Função auxiliar para saber se uma aresta existe ou nao
+static int arestaExiste(aresta * actual, int origin, int destiny){
+    if(actual != NULL){
+        if(actual->origin == origin && actual->destiny == destiny){
+            return 1;
+        }else{
+            arestaExiste(actual->prox, origin, destiny);
+        }
+    }else{
+        return 0;
+    }
+    return 0;
+}
+
+// Função para criar arestas
+static aresta* arestaCria(aresta* actual, int peso, int origin, int destiny){
+    aresta * new = (aresta*)malloc(sizeof(aresta));
+    new->origin = origin;
+    new->destiny = destiny;
+    new->peso = peso;
+    new->prox = actual;
+    return new;
+}
+
+// Função auxiliar para liberar arestas
+static void arestaLibera(aresta* start){
+    if(start != NULL){
+        arestaLibera(start->prox);
+        free(start);
+    }
+}
+
+void liberaGrafo(grafo** grafo){
+    for(int i = 0; i < (*grafo)->numVertices; i++){
+        arestaLibera((*grafo)->vertices[i].arestas);
+    }
+    free((*grafo)->vertices);
+}
+
+
+// Função para adicionar arestas entre dois vertices
+void verticeAddAresta(grafo** grafo, int origin, int destiny, int peso){
+    if(origin >= (*grafo)->numVertices){
+        return;
+    }else if(destiny >= (*grafo)->numVertices){
+        return;
+    }
+    if(!arestaExiste((*grafo)->vertices[origin].arestas, origin, destiny)){
+        (*grafo)->vertices[origin].arestas = arestaCria((*grafo)->vertices[origin].arestas, peso, origin, destiny);
+    }
+    if((*grafo)->type == grafoNaoDirecionado){
+        if(!arestaExiste((*grafo)->vertices[destiny].arestas, destiny, origin)){
+            (*grafo)->vertices[destiny].arestas = arestaCria((*grafo)->vertices[destiny].arestas, peso, destiny, origin);
+        }
+    }
+
+}
+
+// Função auxiliar
+static void arestaImprime(aresta *aresta){
+    if(aresta != NULL){
+        (void)printf("%2d --> %-2d\n", aresta->origin, aresta->destiny);
+        arestaImprime(aresta->prox);
+    }
+}
+
+//Função auxiliar
+static void verticeImprime(vertice vertice){
+    (void)printf("Vertice #%02d\n", vertice.info);
+    if(vertice.arestas != NULL){
+        arestaImprime(vertice.arestas);
+    }else{
+        (void)printf("Sem arestas\n");
+    }
+}
+
+
+void grafoImprime(grafo ** grafo){
+    // Informações do grafo
+    (void)printf("Grafo\n");
+    (void)printf("Tipo: ");
+    (*grafo)->type == grafoDirecionado ? (void)printf("Direcionado\n") : (void)printf("Nao direcionado\n");
+    (void)printf("Numero de vertices: %d\n", (*grafo)->numVertices);
+    //Imprimindo cada vertice
+    for(int i = 0; i < (*grafo)->numVertices; i++){
+        verticeImprime((*grafo)->vertices[i]);
+    }
+}
+
+
+// Função para criar grafos aleatórios
+void grafoCriaRandom(grafo **grafo, int minV, int maxV, tipoGrafo tipo){
+    srand(time(NULL));
+    int numVertices = (minV + (rand() % maxV));
+    int type = tipo;
+    int random;
+
+    criaGrafo(grafo, numVertices, type);
+    
+    for(int i = 0; i < numVertices; i++){
+        random = (rand() % numVertices) + 1;
+        for(int j = 0; j < random; j++){
+            verticeAddAresta(grafo, i, rand() % numVertices, rand() % 100);
+        }
+    }
+}
+
+static void pathCopy(lista **pathList, int original, int copy){
+    lista * aux;
+    while(pathList[copy] != NULL){
+        aux = pathList[copy]->prox;
+        free(pathList[copy]);
+        pathList[copy] = aux;
+    }
+
+    if(pathList[original] != NULL){
+        aux = pathList[original];
+        while(aux != NULL){
+            listaAdd(&pathList[copy], aux->info);
+            aux = aux->prox;
+        }
+    }
+}
+
+//Função que implementa busca em largura para descobrir o menor caminho entre dois pontos e retornar o custo desse caminho
+lista * buscaLargura(grafo **grafo, int vOrigin, int vDestiny){
+    //Fila de ordem de procura
+    fila *queue = filaCria();
+    
+    //Vetores de controle
+    int *distance; //Distancia ate a origem
+    lista **path;
+    lista * retorno;
+
+    //Variaveis auxiliares
+    aresta * arestaAtual;
+    vertice * posiActual;
+    lista * new;
+    lista * aux;
+
+    if(grafo != NULL){
+        if(vOrigin > (*grafo)->numVertices || vDestiny > (*grafo)->numVertices){
+            return NULL;
+        }else{
+            //Alocando um vetor que vai salvar as distâncias
+            distance = (int*)malloc(sizeof(int) * (*grafo)->numVertices);
+            for(int i = 0; i < (*grafo)->numVertices; i++){
+                distance[i] = ARESTA_FORA_GRAFO;
+            }
+            //Inicializando a distâncio do vOrigem com ele msm
+            distance[vOrigin] = 0;
+
+            path = (lista**)malloc(sizeof(lista*) * (*grafo)->numVertices);
+            for(int i = 0; i < (*grafo)->numVertices; i++){
+                path[i] = NULL;
+            }
+            listaAdd(&path[vOrigin], &(*grafo)->vertices[vOrigin]);
+
+            //Iniciando a busca em largura
+            filaAdd(&queue, &((*grafo)->vertices[vOrigin]));
+            (*grafo)->vertices[vOrigin].stats = gray;
+
+            
+            //Enquanto tiver vertices na fila
+            while(queue != NULL){
+                //Atualiza em qual vertice esta o algoritmo
+                posiActual = filaRemove(&queue);
+
+                //Atualiza a lista de arestas para procurar
+                arestaAtual = posiActual->arestas;
+
+                //Enquanto ainda tiver arestas para procurar
+                while(arestaAtual != NULL){
+                    //Se o vertice ainda n foi visitado
+                    if((*grafo)->vertices[arestaAtual->destiny].stats == white){
+                        (*grafo)->vertices[arestaAtual->destiny].stats = gray; //Define o vertice como cinza
+                        filaAdd(&queue, &((*grafo)->vertices[arestaAtual->destiny])); //Add o vertice na fila
+                        distance[arestaAtual->destiny] = distance[arestaAtual->origin] + arestaAtual->peso;
+                        
+                        pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
+                        listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
+                    }else if(distance[arestaAtual->destiny] > (distance[arestaAtual->origin] + arestaAtual->peso)){
+                        distance[arestaAtual->destiny] = (distance[arestaAtual->origin] + arestaAtual->peso);
+                        if((*grafo)->vertices[arestaAtual->destiny].stats == black){
+                            (*grafo)->vertices[arestaAtual->destiny].stats = gray;
+                            filaAdd(&queue, &(*grafo)->vertices[arestaAtual->destiny]);
+                            pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
+                            listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
+                        }
+                    }
+                    arestaAtual = arestaAtual->prox;
+                }
+                posiActual->stats = black;
+            }
+            retorno = path[vDestiny];
+
+            filaLibera(&queue);
+            free(distance);
+            for(int i = 0; i < (*grafo)->numVertices; i++){
+                if(i != vDestiny){
+                    listaLibera(&path[i]);
+                }
+            }
+        
+            //Com isso feito eu tenho as menor distancia possivel entre o meu vOrigem e o vDestino
+            return retorno;
+        }
+    }
+    return NULL;
+}
+
+
+// Função que implemente busca em profundidade retorno o tamanho do menor caminho
+lista * buscaProfundidade(grafo** grafo, int vOrigin, int vDestiny){
+    /* Váriaveis */
+    pilha * prox = criaPilha();
+    vertice * verticeAtual;
+    aresta * arestaAtual;
+    int * distance;
+    lista ** path;
+    lista * retorno;
+
+    /* Verificando se a entrada é valida */
+    if((*grafo) != NULL){
+        if((*grafo)->numVertices >= vOrigin || (*grafo)->numVertices >= vDestiny){
+            //Inicializando as distancias
+            distance = (int*)malloc(sizeof(int) * (*grafo)->numVertices);
+            for(int i = 0; i < (*grafo)->numVertices; i++){
+                distance[i] = ARESTA_FORA_GRAFO;
+            }
+            distance[vOrigin] = 0; // A distancia de um vertice ate ele msm eh 0
+
+            path = (lista**)malloc(sizeof(lista*) * (*grafo)->numVertices);
+            for(int i = 0; i < (*grafo)->numVertices; i++){
+                path[i] = NULL;
+            }
+            listaAdd(&path[vOrigin], &(*grafo)->vertices[vOrigin]);
+
+            // Adicionando o vertice inicial na pilha
+            push(&prox, &(*grafo)->vertices[vOrigin]);
+
+            //Enquanto tiver algo na pilha
+            while(prox->prim != NULL){
+                //Atualizando a posição que se encontra no grafo
+                verticeAtual = pop(&prox);
+                verticeAtual->stats = gray;
+                arestaAtual = verticeAtual->arestas;
+
+                //Enquanto ainda tiver arestas que podem ser adicionadas na pilha
+                while(arestaAtual != NULL){
+                    if((*grafo)->vertices[arestaAtual->destiny].stats == white){
+                        if(distance[arestaAtual->destiny] == ARESTA_FORA_GRAFO){ //Se o vertice foi descoberto agr
+                            push(&prox, &(*grafo)->vertices[arestaAtual->destiny]);
+                            distance[arestaAtual->destiny] = distance[arestaAtual->origin] + arestaAtual->peso;
+                            pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
+                            listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
+                        }else if(distance[arestaAtual->destiny] >= distance[arestaAtual->origin] + arestaAtual->peso){
+                            /* Nesse caso o vertice ja foi descoberto anteriormente, porém n explorado */
+                            /* Se o caminho atual for menor que o que se sabia até então, atualizasse o menor caminho possível */
+                            distance[arestaAtual->destiny] = distance[arestaAtual->origin] + arestaAtual->peso;
+                            pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
+                            listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
+                        }
+                    }else if(distance[arestaAtual->destiny] >= distance[arestaAtual->origin] + arestaAtual->peso){
+                        /* Grafo já foi explorado, porém se descobriu um caminho menor para se chegar até o vertice e precisa */
+                        /* recalcular a distancia dos vertices que vem depois dele */
+                        push(&prox, &(*grafo)->vertices[arestaAtual->destiny]);
+                        if((*grafo)->vertices[arestaAtual->destiny].stats == black){
+                            (*grafo)->vertices[arestaAtual->destiny].stats = gray;
+                        }
+                        distance[arestaAtual->destiny] = distance[arestaAtual->origin] + arestaAtual->peso;
+                        pathCopy(path, arestaAtual->origin, arestaAtual->destiny);
+                        listaAdd(&path[arestaAtual->destiny], &(*grafo)->vertices[arestaAtual->destiny]);
+                    }
+
+                    arestaAtual = arestaAtual->prox;
+                }
+
+                verticeAtual->stats = black;
+            }
+            retorno = path[vDestiny];
+            /* Liberando memória */
+            free(distance);
+            liberarPilha(&prox);
+            for(int i = 0 ; i < (*grafo)->numVertices; i++){
+                if(i != vDestiny){
+                    listaLibera(&path[i]);
+                }
+            }
+
+            return retorno;
+        }
+    }
+    liberarPilha(&prox);
+    return NULL;
+}

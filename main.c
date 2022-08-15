@@ -3,19 +3,40 @@
 #include "grafos.h"
 #include "pilhas.h"
 
-#define SUCESSO (0)
+typedef struct person_s{
+    int starvation;
+    int posiAtual;
+}person_t;
+
+/* Contantes*/
+#define ACTION_OFF_SET (0)
+#define ACTION_STATUS (ACTION_OFF_SET + 1)
+#define ACTION_SET_STATUS (ACTION_OFF_SET + 2)
+#define ACTION_PRINT_MAP (ACTION_OFF_SET + 3)
+#define ACTION_MAP_RECREATE (ACTION_OFF_SET + 4)
+#define ACTION_LIST (ACTION_OFF_SET + 5)  
+#define ACTION_EDIT_LIST (ACTION_OFF_SET + 6) 
+#define ACTION_PRINT_LIST (ACTION_OFF_SET + 7)
+
+
+
 
 int main(void){
     /* Variáveis */
+    person_t fulaninho;
     grafo * gr = NULL;
+    lista * restaurantes = NULL;
+    retornoBusca_t * menorCaminho = NULL;
+    int numResta = 0;
+    int fome = 0;
     int escolha = 1;
     int minV, maxV;
     tipoGrafo tp;
-    retornoBusca_t * menorCaminho = NULL;
-    int vOrigin, vDestiny;
+    int posiAtual;
     lista * aux;
-    
-    // Criando um grafo base
+    lista * path;
+
+    /* Criando um grafo base */
     criaGrafo(&gr, 8, grafoNaoDirecionado);
     verticeAddAresta(&gr, 0, 1, 3);
     verticeAddAresta(&gr, 0, 2, 2);
@@ -26,21 +47,77 @@ int main(void){
     verticeAddAresta(&gr, 6, 7, 1);
     verticeAddAresta(&gr, 2, 5, 1);
     verticeAddAresta(&gr, 3, 6, 6);
-    menorCaminho = buscaLargura(&gr, 0, 7);
+
+    /* Criando uma lista de restaurantes base */
+    listaAdd(&restaurantes, &gr->vertices[7]);
+    listaAdd(&restaurantes, &gr->vertices[4]);
+    numResta = 2;
+
+    /* Criando o Moribundo*/
+    fulaninho.starvation = 0;
+    fulaninho.posiAtual = 0;
 
     do{
-        (void)printf("Problema: \"Estamos Morrendo de forme\"\n");
+        (void)printf("\n\nProblema: \"Don't Starve\"\n");
+        (void)printf("Estou cagado de fome\n");
         (void)printf("Escolha uma das acoes que deseja realizar:\n");
-        (void)printf("[1] - Criar grafo\n");
-        (void)printf("[2] - Imprimir grafo\n");
-        (void)printf("[3] - Imprimir o custo minimo para um caminho\n");
-        (void)printf("[4] - Imprimir o menor caminho entre dois pontos\n");
+        (void)printf("[%2d] - Vizualizar a situacao atual\n", ACTION_STATUS);
+        (void)printf("[%2d] - Atualizar situacao atual\n", ACTION_SET_STATUS);
+        (void)printf("[%2d] - Imprimir o mapa\n", ACTION_PRINT_MAP);
+        (void)printf("[%2d] - Gerar novo mapa\n", ACTION_MAP_RECREATE);
+        (void)printf("[%2d] - Imprimir lista de restaurantes\n", ACTION_LIST);
+        (void)printf("[%2d] - Atualizar lista de restaurantes\n", ACTION_EDIT_LIST);
+        (void)printf("[%2d] - Imprimir o caminho para os restaurantes \n", ACTION_PRINT_LIST);
         (void)printf("[0] - Fechar o programa\n");
+
         (void)scanf("%d%*c", &escolha);
+
         switch(escolha){
-            case 1:
+            case ACTION_STATUS:
+                (void)printf("Situacao do Moribundo:\n");
+                (void)printf("Nivel de fome: %3d\n", fulaninho.starvation);
+                (void)printf("Se encontra na posicao: %d\n", fulaninho.posiAtual);
+                (void)printf("\nAperte enter para continuar...\n");
+                (void)scanf("%*c");
+                (void)printf("\n\n\n\n");
+                break;
+
+            case ACTION_SET_STATUS:
+                (void)printf("Insira o nivel de fome atual: ");
+                (void)scanf("%d%*c", &fome);
+                if(fome > 100 || fome < 0){
+                    (void)printf("Entrada invalida.\n");
+                }else{
+                    fulaninho.starvation = fome;
+                }
+
+                (void)printf("Insira a posicao atual: ");
+                (void)scanf("%d%*c", &posiAtual);
+                if(posiAtual >= gr->numVertices || posiAtual < 0){
+                    (void)printf("Entrada invalida.\n");
+                }else{
+                    fulaninho.posiAtual = posiAtual;
+                }
+
+                (void)printf("\nAperte enter para continuar...\n");
+                (void)scanf("%*c");
+                (void)printf("\n\n\n\n");
+                break;
+
+            case ACTION_PRINT_MAP:
                 if(gr != NULL){
-                    (void)printf("Ja existe um grafo.\nTem certeza que deseja criar outro?\n");
+                    grafoImprime(&gr);
+                }else{
+                    (void)printf("Grafo nao foi criado\n");
+                }
+                (void)printf("\nAperte enter para continuar...\n");
+                (void)scanf("%*c");
+                (void)printf("\n\n\n\n");
+                break;
+
+            case ACTION_MAP_RECREATE:
+                if(gr != NULL){
+                    (void)printf("Ja existe um mapa.\nTem certeza que deseja criar outro?\n");
                     (void)printf("[1] - Sim\n[2] - Nao\n");
                     (void)scanf("%d%*c", &escolha);
                     if(escolha == 1){
@@ -53,7 +130,7 @@ int main(void){
                 (void)scanf("%d%*c", &minV);
                 (void)printf("Insira o tamanho max: ");
                 (void)scanf("%d%*c", &maxV);
-                (void)printf("Insira o tipo do grafo:\n");
+                (void)printf("Insira o tipo das ruas:\n");
                 (void)printf("[1] - Direcionando\n[2] - Nao direcionado\n");
                 (void)scanf("%d%*c", &escolha);
 
@@ -64,91 +141,102 @@ int main(void){
                 }
 
                 grafoCriaRandom(&gr, minV, maxV, tp);
-                
+
+                (void)printf("\nAperte enter para continuar...\n");
+                (void)scanf("%*c");
+                (void)printf("\n\n\n\n");
                 break;
 
-            case 2:
-                if(gr != NULL){
-                    grafoImprime(&gr);
-                    (void)printf("\n\nInsira qualquer coisa pra continuar...\n");
-                    (void)scanf("%*c");
-                }else{
-                    (void)printf("Grafo nao foi criado\n");
-                }
-                break;
-
-            case 3:
-                if(gr != NULL){
-                    (void)printf("Insira o vertice de origem: \n");
-                    (void)scanf("%d%*c", &vOrigin);
-                    vOrigin;
-                    if(vOrigin > gr->numVertices || vOrigin < 0){
-                        (void)printf("Entrada invalida\n");
-                        break;
-                    }
-                    (void)printf("Insira o vertice de destino: \n");
-                    (void)scanf("%d%*c", &vDestiny);
-                    if(vDestiny > gr->numVertices || vDestiny < 0){
-                        (void)printf("Entrada invalida\n");
-                        break;
-                    }
-
-                    if(menorCaminho != NULL){
-                        listaLibera(&menorCaminho->path);
-                        free(menorCaminho);
-                    }
-
-                    menorCaminho = buscaLargura(&gr, vOrigin, vDestiny);
-                    if(menorCaminho != NULL){
-                        (void)printf("Custo: %d\n", menorCaminho->custo);
-                    }else{
-                        (void)printf("Nao ha caminho entre os dois vertices;\n");
+            case ACTION_LIST:
+                if(restaurantes != NULL){
+                    (void)printf("Restaurantes na regiao:\n\n");
+                    aux = restaurantes;
+                    while(aux != NULL){
+                        printf("Restaurante: %-4d\n", aux->info->info);
+                        aux = aux->prox;
                     }
                 }
+
+
+                (void)printf("\nAperte enter para continuar...\n");
+                (void)scanf("%*c");
+                (void)printf("\n\n\n\n");
                 break;
 
-            case 4:
-                if(gr != NULL){
-                    (void)printf("Insira o vertice de origem: \n");
-                    (void)scanf("%d%*c", &vOrigin);
-                    if(vOrigin > gr->numVertices || vOrigin < 0){
-                        (void)printf("Entrada invalida\n");
-                        break;
-                    }
-                    (void)printf("Insira o vertice de destino: \n");
-                    (void)scanf("%d%*c", &vDestiny);
-                    if(vDestiny > gr->numVertices || vDestiny < 0){
-                        (void)printf("Entrada invalida\n");
-                        break;
-                    }
-
-                    if(menorCaminho != NULL){
-                        listaLibera(&menorCaminho->path);
-                        free(menorCaminho);
-                    }
-
-                    menorCaminho = buscaLargura(&gr, vOrigin, vDestiny);
-                    if(menorCaminho->path != NULL){
-                        aux = menorCaminho->path;
-                        while(aux->prox != NULL){
-                            (void)printf("%2d --> %-2d\n", aux->info->info, aux->prox->info->info);
-                            aux = aux->prox;
+            case ACTION_EDIT_LIST:
+                if(restaurantes != NULL){
+                    (void)printf("Qual acao deseja executar?\n");
+                    (void)printf("[ 1] - Remover um restaurante da lista\n");
+                    (void)printf("[ 2] - Adicionar um restaurante a lista\n");
+                    (void)scanf("%d%*c", &escolha);
+                    if(escolha == 1){
+                        (void)printf("Insira qual restaurante deseja remover: ");
+                        (void)scanf("%d%*c", &escolha);
+                        listaRemove(&restaurantes, escolha);
+                    }else if(escolha == 2){
+                        (void)printf("Insira qual restaurante deseja adicionar: ");
+                        (void)scanf("%d%*c", &escolha);
+                        if(escolha >= gr->numVertices || escolha < 0){
+                            (void)printf("Restaurante nao foi encontrado no mapa\n");
+                        }else{
+                            listaAdd(&restaurantes, &gr->vertices[escolha]);
                         }
-                        (void)printf("Enfim: %d\n", aux->info->info);
-                    }else{
-                        (void)printf("Nao ha caminho entre os dois vertices;\n");
+                    }
+
+                    numResta = 0;
+                    aux = restaurantes;
+                    while(aux != NULL){
+                        numResta++;
+                        aux = aux->prox;
                     }
                 }
+
+                (void)printf("\nAperte enter para continuar...\n");
+                (void)scanf("%*c");
+                (void)printf("\n\n\n\n");
                 break;
 
-            case 0:
-                (void)printf("Fechando o programa...\n");
+            case ACTION_PRINT_LIST:
+                if(gr != NULL && restaurantes != NULL){
+                    aux = restaurantes;
+                    while(aux != NULL){
+                        menorCaminho = buscaLargura(&gr, fulaninho.posiAtual, aux->info->info);                        
+                        (void)printf("Restaurante: %-4d\n\n", aux->info->info);
+                        (void)printf("Fome ate chegar no restaurante: %3d\n", (menorCaminho->custo + fulaninho.starvation));
+                        (void)printf("Caminho para chegar no restaurante:\n");
+                        path = menorCaminho->path;
+                        if(path == NULL){
+                            (void)printf("Nao tem caminho ate o restaurante.\n");
+                        }else{
+                            while(path->prox != NULL){
+                                (void)printf("%4c%2d --> %2d\n", ' ',path->info->info, path->prox->info->info);
+                                path = path->prox;
+                            }
+                            (void)printf("%4cEnfim: %d\n\n\n", ' ', path->info->info);
+                        }
+                        if(menorCaminho != NULL){
+                            listaLibera(&menorCaminho->path);
+                            free(menorCaminho);
+                        }
+
+                        aux = aux->prox;
+                    }
+                }
+
+
+                (void)printf("\nAperte enter para continuar...\n");
+                (void)scanf("%*c");
+                (void)printf("\n\n\n\n");
                 break;
+
             default:
-                (void)printf("Opcao invalida!\n");
+
                 break;
         }
+
+
     }while(escolha != 0);
+
 
     if(gr != NULL){
         liberaGrafo(&gr);
@@ -158,5 +246,6 @@ int main(void){
         free(menorCaminho);
     }
 
-    return SUCESSO;
+
+    return EXIT_SUCCESS;
 }

@@ -105,7 +105,7 @@ void grafoImprime(grafo ** grafo){
 // Função para criar grafos aleatórios
 void grafoCriaRandom(grafo **grafo, int minV, int maxV, tipoGrafo tipo){
     srand(time(NULL));
-    int numVertices = (minV + (rand() % maxV));
+    int numVertices = (minV + (rand() % (maxV - minV)));
     int type = tipo;
     int random;
 

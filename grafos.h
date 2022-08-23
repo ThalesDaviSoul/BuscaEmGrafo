@@ -45,6 +45,11 @@ typedef struct retornoBusca_s{
     lista * path;
 }retornoBusca_t;
 
+
+void listaAdd(lista ** l, vertice * info);
+void listaLibera(lista ** l);
+void listaRemove(lista **l, int remove);
+
 void criaGrafo(grafo** grafo, int numVertices, tipoGrafo type);
 void liberaGrafo(grafo** grafo);
 void verticeAddAresta(grafo** grafo, int origin, int destiny, int peso);

@@ -56,4 +56,3 @@ void verticeAddAresta(grafo** grafo, int origin, int destiny, int peso);
 void grafoImprime(grafo ** grafo);
 void grafoCriaRandom(grafo **grafo, int minV, int maxV, tipoGrafo tipo);
 retornoBusca_t * buscaLargura(grafo **grafo, int vOrigin, int vDestiny);
-lista * buscaProfundidade(grafo** grafo, int vOrigin, int vDestiny);

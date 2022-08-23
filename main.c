@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "grafos.h"
-#include "pilhas.h"
 
 typedef struct person_s{
     int starvation;

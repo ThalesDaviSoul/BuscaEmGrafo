@@ -27,12 +27,13 @@ int main(void){
     grafo * gr = NULL;
     lista * restaurantes = NULL;
     retornoBusca_t * menorCaminho = NULL;
-    int numResta = 0;
+
     int fome = 0;
     int escolha = 1;
     int minV, maxV;
     tipoGrafo tp;
     int posiAtual;
+
     lista * aux;
     lista * path;
 
@@ -51,7 +52,6 @@ int main(void){
     /* Criando uma lista de restaurantes base */
     listaAdd(&restaurantes, &gr->vertices[7]);
     listaAdd(&restaurantes, &gr->vertices[4]);
-    numResta = 2;
 
     /* Criando o Moribundo*/
     fulaninho.starvation = 0;
@@ -142,6 +142,9 @@ int main(void){
 
                 grafoCriaRandom(&gr, minV, maxV, tp);
 
+                listaLibera(&restaurantes);
+                fulaninho.posiAtual = 0;
+
                 (void)printf("\nAperte enter para continuar...\n");
                 (void)scanf("%*c");
                 (void)printf("\n\n\n\n");
@@ -155,6 +158,8 @@ int main(void){
                         printf("Restaurante: %-4d\n", aux->info->info);
                         aux = aux->prox;
                     }
+                }else{
+                    (void)printf("Nao tem restaurantes na regiao\n");
                 }
 
 
@@ -182,12 +187,20 @@ int main(void){
                             listaAdd(&restaurantes, &gr->vertices[escolha]);
                         }
                     }
-
-                    numResta = 0;
-                    aux = restaurantes;
-                    while(aux != NULL){
-                        numResta++;
-                        aux = aux->prox;
+                }else{
+                    (void)printf("Nao tem restaurantes na regiao.\n");
+                    (void)printf("Deseja adicionar algum?\n");
+                    (void)printf("[1] - Sim\n");
+                    (void)printf("[2] - Nao\n");
+                    (void)scanf("%d%*c", &escolha);
+                    if(escolha == 1){
+                        (void)printf("Insira qual restaurante deseja adicionar: ");
+                        (void)scanf("%d%*c", &escolha);
+                        if(escolha >= gr->numVertices || escolha < 0){
+                            (void)printf("Restaurante nao foi encontrado no mapa\n");
+                        }else{
+                            listaAdd(&restaurantes, &gr->vertices[escolha]);
+                        }
                     }
                 }
 
@@ -246,6 +259,9 @@ int main(void){
         free(menorCaminho);
     }
 
+    if(restaurantes != NULL){
+        listaLibera(&restaurantes);
+    }
 
     return EXIT_SUCCESS;
 }

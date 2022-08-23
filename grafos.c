@@ -1,7 +1,6 @@
 /* Inclusões */
 #include "grafos.h"
 #include "filas.h"
-#include "pilhas.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>

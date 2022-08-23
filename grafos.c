@@ -6,7 +6,61 @@
 #include <stdlib.h>
 #include <time.h>
 
-/* Funções */
+/* Funções de Lista */
+void listaAdd(lista ** l, vertice * info){
+    lista * new = (lista*)malloc(sizeof(lista));
+    lista * aux;
+    
+    new->info = info;
+    new->prox = NULL;
+    
+
+    if((*l) != NULL){
+        aux = (*l);
+        while(aux->prox != NULL){
+            aux = aux->prox;
+        }
+        aux->prox = new;
+    }else{
+        (*l) = new;
+    }
+}
+
+void listaLibera(lista ** l){
+    lista * aux = (*l);
+
+    while(aux != NULL){
+        aux = (*l)->prox;
+        free(*l);
+        (*l) = aux;
+    }
+}
+
+void listaRemove(lista **l, int remove){
+    lista * aux;
+    lista * ant = NULL;
+    if((*l) != NULL){
+        aux = (*l);
+        while(aux != NULL){
+            if(aux->info->info == remove){
+                break;
+            }else{
+                ant = aux;
+                aux = aux->prox;
+            }
+        }
+
+        if(ant == NULL){
+            (*l) = (*l)->prox;
+        }else{
+            ant->prox = aux->prox;
+        }
+        free(aux);
+    }
+}
+
+
+/* Funções de Grafo */
 //Função para criação de grafo
 void criaGrafo(grafo** graf, int numVertices, tipoGrafo type){
     *graf = (grafo*)malloc(sizeof(grafo));
